@@ -1,6 +1,8 @@
 ﻿using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using BenchmarkDotNet.Attributes;
+using CsvHelper;
 
 namespace FilePerformance;
 
@@ -9,55 +11,6 @@ namespace FilePerformance;
 [RankColumn]
 public class FileRead
 {
-    [Benchmark]
-    public void ReadFileWithStreamReader()
-    {
-        Stopwatch sw = Stopwatch.StartNew();
-        sw.Start();
-
-        using StreamReader reader = new(@"C:\dev\temp\temp\FileTest.csv");
-        reader.ReadLine();
-
-        var count = 0;
-
-        while (!reader.EndOfStream)
-        {
-            var line = reader.ReadLine()?.Split(',');
-
-            //do something...
-            count++;
-        }
-
-        sw.Stop();
-        ConsoleLog("ReadFileWithStreamReader", sw, count);
-    }
-
-    [Benchmark]
-    public void ReadFileWithParallelism()
-    {
-        Stopwatch sw = Stopwatch.StartNew();
-        sw.Start();
-
-        const int bufferSize = 4096;
-        var count = 0;
-
-        using (StreamReader reader = new(@"C:\dev\temp\temp\FileTest.csv"))
-        {
-            reader.ReadLine();
-
-            Parallel.ForEach(ReadLinesInChunks(reader, bufferSize), chunk =>
-            {
-                var chunkLines = chunk.Split('\n');
-
-                //do something
-                count++;
-            });
-        }
-
-        sw.Stop();
-        ConsoleLog("ReadFileWithParallelism", sw, count);
-    }
-
     [Benchmark]
     public void ReadFileWithReadAllLines()
     {
@@ -79,6 +32,56 @@ public class FileRead
 
         sw.Stop();
         ConsoleLog("ReadFileWithReadAllLines", sw, count);
+    }
+
+    [Benchmark]
+    public void ReadFileWithCsvHelper()
+    {
+        Stopwatch sw = Stopwatch.StartNew();
+        sw.Start();
+
+        var count = 0;
+        var filePath = @"C:\dev\temp\temp\FileTest.csv";
+
+        using (var reader = new StreamReader(filePath))
+        using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
+        {
+            csv.Context.RegisterClassMap<CustomerMap>();
+            var record = new Customer();
+            var records = csv.EnumerateRecords(record);
+            foreach (var r in records)
+            {
+                //do something
+
+                count++;
+            }
+        }
+
+        sw.Stop();
+        ConsoleLog("ReadFileWithCsvHelper", sw, count);
+    }
+
+    [Benchmark]
+    public void ReadFileWithStreamReader()
+    {
+        Stopwatch sw = Stopwatch.StartNew();
+        sw.Start();
+
+        using StreamReader reader = new(@"C:\dev\temp\temp\FileTest.csv");
+        reader.ReadLine();
+
+        var count = 0;
+
+        while (!reader.EndOfStream)
+        {
+            var line = reader.ReadLine()?.Split(',');
+
+            //do something...
+            count++;
+        }
+
+        sw.Stop();
+        ConsoleLog("ReadFileWithStreamReader", sw, count);
     }
 
     [Benchmark]
@@ -105,6 +108,37 @@ public class FileRead
 
         sw.Stop();
         ConsoleLog("ReadFileWithOpenRead", sw, count);
+    }
+
+    [Benchmark]
+    public void ReadFileWithParallelism()
+    {
+        Stopwatch sw = Stopwatch.StartNew();
+        sw.Start();
+
+        const int bufferSize = 4096;
+        var count = 0;
+        var countLock = new object();
+
+        using (StreamReader reader = new(@"C:\dev\temp\temp\FileTest.csv"))
+        {
+            reader.ReadLine();
+
+            Parallel.ForEach(ReadLinesInChunks(reader, bufferSize), chunk =>
+            {
+                var chunkLines = chunk.Split('\n');
+
+                //do something
+
+                lock (countLock)
+                {
+                    count++;
+                }
+            });
+        }
+
+        sw.Stop();
+        ConsoleLog("ReadFileWithParallelism", sw, count);
     }
 
     [Benchmark]
@@ -141,7 +175,7 @@ public class FileRead
     }
 
     [Benchmark]
-    public IEnumerable<string> ReadFileWithBuffer()
+    public void ReadFileWithBuffer()
     {
         Stopwatch sw = Stopwatch.StartNew();
         sw.Start();
@@ -192,7 +226,7 @@ public class FileRead
 
                         //do something
 
-                        yield return column1;
+                        //yield return column1;
 
                         count++;
                     }
