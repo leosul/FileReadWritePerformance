@@ -62,29 +62,6 @@ public class FileRead
     }
 
     [Benchmark]
-    public void ReadFileWithStreamReader()
-    {
-        Stopwatch sw = Stopwatch.StartNew();
-        sw.Start();
-
-        using StreamReader reader = new(@"C:\dev\temp\temp\FileTest.csv");
-        reader.ReadLine();
-
-        var count = 0;
-
-        while (!reader.EndOfStream)
-        {
-            var line = reader.ReadLine()?.Split(',');
-
-            //do something...
-            count++;
-        }
-
-        sw.Stop();
-        ConsoleLog("ReadFileWithStreamReader", sw, count);
-    }
-
-    [Benchmark]
     public void ReadFileWithOpenRead()
     {
         Stopwatch sw = Stopwatch.StartNew();
@@ -103,6 +80,7 @@ public class FileRead
             var lineAux = line.Split(',');
 
             //do something
+
             count++;
         }
 
@@ -175,7 +153,7 @@ public class FileRead
     }
 
     [Benchmark]
-    public void ReadFileWithBuffer()
+    public void ReadFileWithWithoutReadLine()
     {
         Stopwatch sw = Stopwatch.StartNew();
         sw.Start();
